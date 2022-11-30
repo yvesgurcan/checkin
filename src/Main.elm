@@ -2,14 +2,17 @@
 module Main exposing (..)
 
 import Browser
-import Html
-import Html.Styled exposing (..)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Html.Styled.Attributes exposing (css)
-
+import List exposing (..)
 import Date exposing (..)
 import Css exposing (..)
 
 type alias Model = 
+    List EmotionalCheckIn
+
+type alias EmotionalCheckIn =
     { status : String
     , lastUpdated : Int
     }
@@ -17,14 +20,14 @@ type alias Model =
 main =
     Browser.element
         { init = init
-        , view = view >> toUnstyled
+        , view = view
         , update = update
         , subscriptions = subscriptions
         }
 
-init : () -> ( Model, Cmd Msg )
+init : () -> (Model, Cmd Msg)
 init flags =
-    ({ status = ":)", lastUpdated = 100 }, Cmd.none)
+    ([{ status = ":)", lastUpdated = 100 }], Cmd.none)
 
 
 type Msg
@@ -43,9 +46,26 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
+type alias FirstModelEntry = EmotionalCheckIn
 
-view msg = div[ css [ color (hex "ffffff"),  backgroundColor (hex "000000"), height (vh 100)]] [
-    h1 [ css [  margin (px 0) ] ] [ text "Emotional availabilty check-in" ] ]
+firstModelEntry : Model -> FirstModelEntry
+firstModelEntry model = case (head model) of
+    Just val -> val
+    Nothing -> { status = "", lastUpdated = 0 }
+
+view : Model -> Html msg
+view model =
+    main_[-- css [ color (hex "ffffff")
+           -- ,  backgroundColor (hex "000000")
+           -- , Css.height (vh 100) ]
+           ] [
+        h1 [ --css [ margin (px 0) ]
+        ]
+        [ text "Emotional availabilty check-in" ]
+
+        , input [ value (.status (firstModelEntry model))] []
+            
+        ]
