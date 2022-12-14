@@ -4384,6 +4384,52 @@ function _Browser_load(url)
 		}
 	}));
 }
+
+
+
+function _Time_now(millisToPosix)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(millisToPosix(Date.now())));
+	});
+}
+
+var _Time_setInterval = F2(function(interval, task)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		var id = setInterval(function() { _Scheduler_rawSpawn(task); }, interval);
+		return function() { clearInterval(id); };
+	});
+});
+
+function _Time_here()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(
+			A2($elm$time$Time$customZone, -(new Date().getTimezoneOffset()), _List_Nil)
+		));
+	});
+}
+
+
+function _Time_getZoneName()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		try
+		{
+			var name = $elm$time$Time$Name(Intl.DateTimeFormat().resolvedOptions().timeZone);
+		}
+		catch (e)
+		{
+			var name = $elm$time$Time$Offset(new Date().getTimezoneOffset());
+		}
+		callback(_Scheduler_succeed(name));
+	});
+}
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
@@ -5173,36 +5219,78 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Main$UpdateCurrentTime = function (a) {
+	return {$: 'UpdateCurrentTime', a: a};
+};
+var $elm$time$Time$Posix = function (a) {
+	return {$: 'Posix', a: a};
+};
+var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
+var $elm$time$Time$Name = function (a) {
+	return {$: 'Name', a: a};
+};
+var $elm$time$Time$Offset = function (a) {
+	return {$: 'Offset', a: a};
+};
+var $elm$time$Time$Zone = F2(
+	function (a, b) {
+		return {$: 'Zone', a: a, b: b};
+	});
+var $elm$time$Time$customZone = $elm$time$Time$Zone;
+var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
 var $author$project$Main$init = function (flags) {
 	return _Utils_Tuple2(
-		_List_fromArray(
-			[
-				{id: 'k', lastUpdated: 100, status: ':)'},
-				{id: 'y', lastUpdated: 999, status: ':D'}
-			]),
-		$elm$core$Platform$Cmd$none);
+		{
+			emotionalCheckIns: _List_fromArray(
+				[
+					{
+					id: 'k',
+					lastUpdated: $elm$time$Time$millisToPosix(0),
+					status: ':)'
+				},
+					{
+					id: 'y',
+					lastUpdated: $elm$time$Time$millisToPosix(0),
+					status: ':D'
+				}
+				]),
+			now: $elm$time$Time$millisToPosix(0)
+		},
+		A2($elm$core$Task$perform, $author$project$Main$UpdateCurrentTime, $elm$time$Time$now));
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
 var $author$project$Main$subscriptions = function (_v0) {
 	return $elm$core$Platform$Sub$none;
 };
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Main$update = F2(
 	function (payload, model) {
-		if (payload.$ === 'NoOp') {
-			return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-		} else {
-			var id = payload.a;
-			var status = payload.b;
-			var updateEmotionalCheckIn = function (emotionalCheckIn) {
-				return _Utils_eq(emotionalCheckIn.id, id) ? _Utils_update(
-					emotionalCheckIn,
-					{status: status}) : emotionalCheckIn;
-			};
-			var updatedModel = A2($elm$core$List$map, updateEmotionalCheckIn, model);
-			return _Utils_Tuple2(updatedModel, $elm$core$Platform$Cmd$none);
+		switch (payload.$) {
+			case 'NoOp':
+				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+			case 'SetEmotionalCheckInStatus':
+				var id = payload.a;
+				var status = payload.b;
+				var updateEmotionalCheckIn = function (emotionalCheckIn) {
+					return _Utils_eq(emotionalCheckIn.id, id) ? _Utils_update(
+						emotionalCheckIn,
+						{lastUpdated: model.now, status: status}) : emotionalCheckIn;
+				};
+				var updatedEmotionalCheckIns = A2($elm$core$List$map, updateEmotionalCheckIn, model.emotionalCheckIns);
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{emotionalCheckIns: updatedEmotionalCheckIns}),
+					$elm$core$Platform$Cmd$none);
+			default:
+				var time = payload.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{now: time}),
+					$elm$core$Platform$Cmd$none);
 		}
 	});
 var $author$project$Main$SetEmotionalCheckInStatus = F2(
@@ -5236,14 +5324,187 @@ var $author$project$Main$getEmotionalCheckIn = F2(
 			return _Utils_eq(emotionalCheckIn.id, id);
 		};
 		var matchEmotionalCheckIn = $elm$core$List$head(
-			A2($elm$core$List$filter, filterEmotionalCheckIn, model));
+			A2($elm$core$List$filter, filterEmotionalCheckIn, model.emotionalCheckIns));
 		if (matchEmotionalCheckIn.$ === 'Just') {
 			var val = matchEmotionalCheckIn.a;
 			return val;
 		} else {
-			return {id: 'BOOM', lastUpdated: 0, status: ''};
+			return {
+				id: 'BOOM',
+				lastUpdated: $elm$time$Time$millisToPosix(0),
+				status: ''
+			};
 		}
 	});
+var $author$project$Main$getEmotionalCheckInLastUpdated = F2(
+	function (id, model) {
+		return function ($) {
+			return $.lastUpdated;
+		}(
+			A2($author$project$Main$getEmotionalCheckIn, id, model));
+	});
+var $author$project$Main$getEmotionalCheckInStatus = F2(
+	function (id, model) {
+		return function ($) {
+			return $.status;
+		}(
+			A2($author$project$Main$getEmotionalCheckIn, id, model));
+	});
+var $author$project$Main$getDay = function (day) {
+	return (day > 9) ? $elm$core$String$fromInt(day) : ('0' + $elm$core$String$fromInt(day));
+};
+var $author$project$Main$getMonth = function (month) {
+	switch (month.$) {
+		case 'Jan':
+			return '01';
+		case 'Feb':
+			return '02';
+		case 'Mar':
+			return '03';
+		case 'Apr':
+			return '04';
+		case 'May':
+			return '05';
+		case 'Jun':
+			return '06';
+		case 'Jul':
+			return '07';
+		case 'Aug':
+			return '08';
+		case 'Sep':
+			return '09';
+		case 'Oct':
+			return '10';
+		case 'Nov':
+			return '11';
+		default:
+			return '12';
+	}
+};
+var $elm$time$Time$flooredDiv = F2(
+	function (numerator, denominator) {
+		return $elm$core$Basics$floor(numerator / denominator);
+	});
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $elm$time$Time$toAdjustedMinutesHelp = F3(
+	function (defaultOffset, posixMinutes, eras) {
+		toAdjustedMinutesHelp:
+		while (true) {
+			if (!eras.b) {
+				return posixMinutes + defaultOffset;
+			} else {
+				var era = eras.a;
+				var olderEras = eras.b;
+				if (_Utils_cmp(era.start, posixMinutes) < 0) {
+					return posixMinutes + era.offset;
+				} else {
+					var $temp$defaultOffset = defaultOffset,
+						$temp$posixMinutes = posixMinutes,
+						$temp$eras = olderEras;
+					defaultOffset = $temp$defaultOffset;
+					posixMinutes = $temp$posixMinutes;
+					eras = $temp$eras;
+					continue toAdjustedMinutesHelp;
+				}
+			}
+		}
+	});
+var $elm$time$Time$toAdjustedMinutes = F2(
+	function (_v0, time) {
+		var defaultOffset = _v0.a;
+		var eras = _v0.b;
+		return A3(
+			$elm$time$Time$toAdjustedMinutesHelp,
+			defaultOffset,
+			A2(
+				$elm$time$Time$flooredDiv,
+				$elm$time$Time$posixToMillis(time),
+				60000),
+			eras);
+	});
+var $elm$core$Basics$ge = _Utils_ge;
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$time$Time$toCivil = function (minutes) {
+	var rawDay = A2($elm$time$Time$flooredDiv, minutes, 60 * 24) + 719468;
+	var era = (((rawDay >= 0) ? rawDay : (rawDay - 146096)) / 146097) | 0;
+	var dayOfEra = rawDay - (era * 146097);
+	var yearOfEra = ((((dayOfEra - ((dayOfEra / 1460) | 0)) + ((dayOfEra / 36524) | 0)) - ((dayOfEra / 146096) | 0)) / 365) | 0;
+	var dayOfYear = dayOfEra - (((365 * yearOfEra) + ((yearOfEra / 4) | 0)) - ((yearOfEra / 100) | 0));
+	var mp = (((5 * dayOfYear) + 2) / 153) | 0;
+	var month = mp + ((mp < 10) ? 3 : (-9));
+	var year = yearOfEra + (era * 400);
+	return {
+		day: (dayOfYear - ((((153 * mp) + 2) / 5) | 0)) + 1,
+		month: month,
+		year: year + ((month <= 2) ? 1 : 0)
+	};
+};
+var $elm$time$Time$toDay = F2(
+	function (zone, time) {
+		return $elm$time$Time$toCivil(
+			A2($elm$time$Time$toAdjustedMinutes, zone, time)).day;
+	});
+var $elm$time$Time$Apr = {$: 'Apr'};
+var $elm$time$Time$Aug = {$: 'Aug'};
+var $elm$time$Time$Dec = {$: 'Dec'};
+var $elm$time$Time$Feb = {$: 'Feb'};
+var $elm$time$Time$Jan = {$: 'Jan'};
+var $elm$time$Time$Jul = {$: 'Jul'};
+var $elm$time$Time$Jun = {$: 'Jun'};
+var $elm$time$Time$Mar = {$: 'Mar'};
+var $elm$time$Time$May = {$: 'May'};
+var $elm$time$Time$Nov = {$: 'Nov'};
+var $elm$time$Time$Oct = {$: 'Oct'};
+var $elm$time$Time$Sep = {$: 'Sep'};
+var $elm$time$Time$toMonth = F2(
+	function (zone, time) {
+		var _v0 = $elm$time$Time$toCivil(
+			A2($elm$time$Time$toAdjustedMinutes, zone, time)).month;
+		switch (_v0) {
+			case 1:
+				return $elm$time$Time$Jan;
+			case 2:
+				return $elm$time$Time$Feb;
+			case 3:
+				return $elm$time$Time$Mar;
+			case 4:
+				return $elm$time$Time$Apr;
+			case 5:
+				return $elm$time$Time$May;
+			case 6:
+				return $elm$time$Time$Jun;
+			case 7:
+				return $elm$time$Time$Jul;
+			case 8:
+				return $elm$time$Time$Aug;
+			case 9:
+				return $elm$time$Time$Sep;
+			case 10:
+				return $elm$time$Time$Oct;
+			case 11:
+				return $elm$time$Time$Nov;
+			default:
+				return $elm$time$Time$Dec;
+		}
+	});
+var $elm$time$Time$toYear = F2(
+	function (zone, time) {
+		return $elm$time$Time$toCivil(
+			A2($elm$time$Time$toAdjustedMinutes, zone, time)).year;
+	});
+var $elm$time$Time$utc = A2($elm$time$Time$Zone, 0, _List_Nil);
+var $author$project$Main$getUserReadableValueFromPosix = function (timestamp) {
+	var userReadableValue = $elm$core$String$fromInt(
+		A2($elm$time$Time$toYear, $elm$time$Time$utc, timestamp)) + ('-' + ($author$project$Main$getMonth(
+		A2($elm$time$Time$toMonth, $elm$time$Time$utc, timestamp)) + ('-' + $author$project$Main$getDay(
+		A2($elm$time$Time$toDay, $elm$time$Time$utc, timestamp)))));
+	return (userReadableValue === '1970-01-01') ? '' : userReadableValue;
+};
 var $elm$html$Html$h1 = _VirtualDom_node('h1');
 var $elm$html$Html$input = _VirtualDom_node('input');
 var $elm$html$Html$label = _VirtualDom_node('label');
@@ -5337,10 +5598,7 @@ var $author$project$Main$view = function (model) {
 					[
 						$elm$html$Html$Attributes$placeholder('How are you feeling today?'),
 						$elm$html$Html$Attributes$value(
-						function ($) {
-							return $.status;
-						}(
-							A2($author$project$Main$getEmotionalCheckIn, 'k', model))),
+						A2($author$project$Main$getEmotionalCheckInStatus, 'k', model)),
 						$elm$html$Html$Events$onInput(
 						$author$project$Main$SetEmotionalCheckInStatus('k'))
 					]),
@@ -5351,7 +5609,9 @@ var $author$project$Main$view = function (model) {
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Last updated: ???')
+						$elm$html$Html$text(
+						'Last updated: ' + $author$project$Main$getUserReadableValueFromPosix(
+							A2($author$project$Main$getEmotionalCheckInLastUpdated, 'k', model)))
 					])),
 				A2($elm$html$Html$br, _List_Nil, _List_Nil),
 				A2($elm$html$Html$br, _List_Nil, _List_Nil),
@@ -5369,10 +5629,7 @@ var $author$project$Main$view = function (model) {
 					[
 						$elm$html$Html$Attributes$placeholder('How are you feeling today?'),
 						$elm$html$Html$Attributes$value(
-						function ($) {
-							return $.status;
-						}(
-							A2($author$project$Main$getEmotionalCheckIn, 'y', model))),
+						A2($author$project$Main$getEmotionalCheckInStatus, 'y', model)),
 						$elm$html$Html$Events$onInput(
 						$author$project$Main$SetEmotionalCheckInStatus('y'))
 					]),
@@ -5383,7 +5640,9 @@ var $author$project$Main$view = function (model) {
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Last updated: ???')
+						$elm$html$Html$text(
+						'Last updated: ' + $author$project$Main$getUserReadableValueFromPosix(
+							A2($author$project$Main$getEmotionalCheckInLastUpdated, 'y', model)))
 					]))
 			]));
 };
