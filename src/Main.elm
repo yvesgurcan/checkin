@@ -10,7 +10,8 @@ import List exposing (..)
 import Date exposing (..)
 import Css exposing (..)
 import Task exposing (..)
-import Time exposing (Posix, millisToPosix, now, toYear, toMonth, toDay, utc, Month(..))
+import Time exposing (Posix, millisToPosix, posixToMillis, now, toYear, toMonth, toDay, utc, Month(..))
+import Duration exposing (..)
 
 main =
     Browser.element
@@ -27,6 +28,7 @@ type alias Model =
 
 type alias EmotionalCheckIn =
     { id: String
+    , name: String
     , status : String
     , lastUpdated : Posix
     }
@@ -37,8 +39,8 @@ init : () -> ( Model, Cmd UpdatePayload )
 init flags =
     ({ now = millisToPosix 0
        , emotionalCheckIns =
-            [ { id = "k", status = ":)", lastUpdated = millisToPosix 0 }
-              , { id = "y", status = ":D", lastUpdated = millisToPosix 0 }
+            [ { id = "k", name = "K", status = ":)", lastUpdated = millisToPosix 0 }
+              , { id = "y", name = "Y", status = ":D", lastUpdated = millisToPosix 0 }
             ]
     }
     , perform UpdateCurrentTime now
@@ -64,7 +66,6 @@ update payload model =
                     else
                         emotionalCheckIn
                 updatedEmotionalCheckIns = List.map updateEmotionalCheckIn model.emotionalCheckIns
-            -- TODO: Change value of lastUpdated as well to be current timestamp.
             -- TODO: Send a POST request. Will need backend as well.
             in ({ model | emotionalCheckIns = updatedEmotionalCheckIns }, Cmd.none )
 
@@ -72,30 +73,12 @@ update payload model =
             ({ model | now = time }, Cmd.none)
 
 
-
-
 subscriptions : Model -> Sub UpdatePayload
 subscriptions _ =
     Sub.none
 
-getEmotionalCheckIn : String -> Model -> EmotionalCheckIn
-getEmotionalCheckIn id model = 
-    let
-        filterEmotionalCheckIn emotionalCheckIn = emotionalCheckIn.id == id
-        matchEmotionalCheckIn = head ( filter filterEmotionalCheckIn model.emotionalCheckIns )
-    in case matchEmotionalCheckIn of
-        Just val -> val
-        -- TODO: Let the function return Nothing if the record was not found instead of returning a misleadaing ID.
-        Nothing -> { id = "BOOM", status = "", lastUpdated = millisToPosix 0 }
-
-getEmotionalCheckInStatus : String -> Model -> String
-getEmotionalCheckInStatus  id model = ( .status ( getEmotionalCheckIn id model ) )
-
-getEmotionalCheckInLastUpdated : String -> Model -> Posix
-getEmotionalCheckInLastUpdated id model = ( .lastUpdated ( getEmotionalCheckIn id model ) )
-
-getUserReadableValueFromPosix : Posix -> String
-getUserReadableValueFromPosix timestamp =
+getHumanReadableDate : Posix -> String
+getHumanReadableDate timestamp =
     let userReadableValue = String.fromInt ( toYear utc timestamp ) ++ "-" ++ getMonth (toMonth utc timestamp ) ++ "-" ++ getDay ( toDay utc timestamp )
     in
         if (userReadableValue == "1970-01-01") then ""
@@ -121,37 +104,48 @@ getDay : Int -> String
 getDay day =
     if day > 9 then String.fromInt day
     else "0" ++ String.fromInt day
-    
+
+-- TODO: Expand this function so that, when given a unit of "second", it returns "" if duration == 0, "X second" if duration == 1, or else "X seconds".
+getHumanReadableDurationFragment : Float -> String -> String
+getHumanReadableDurationFragment duration unit = ""
+
+-- TODO: Update model.now every second so that the duration between model.now and date is updated in the view. Otherwise, lastUpdated will always be equal to now.
+-- TODO: Process the last updated timestamp as a time-from-now user-friendly string thanks to Duration in elm-units
+getHumanReadableDuration : Posix -> Posix -> String
+getHumanReadableDuration pastDate now =
+    if ( posixToMillis pastDate == 0) then "-"
+    else
+        let
+            differenceFromNow = milliseconds ( toFloat ( posixToMillis now - posixToMillis pastDate ) )
+        in String.fromFloat ( inSeconds differenceFromNow ) ++ " seconds ago."
+
+viewGetCheckIns : Model -> Html UpdatePayload
+viewGetCheckIns model =
+    let
+        viewGetCheckIn emotionalCheckIn =
+            let
+                _ = Debug.log emotionalCheckIn.id ( "status: " ++ emotionalCheckIn.status ++ ", lastUpdated: " ++ String.fromInt ( posixToMillis emotionalCheckIn.lastUpdated ) )
+            in
+            div []
+                [ label [] [ text ( emotionalCheckIn.name ++ "'s emotional availability" ) ]
+                , br [] []
+                , input
+                    [ placeholder "How are you feeling today?"
+                    , value ( emotionalCheckIn.status )
+                    , onInput ( SetEmotionalCheckInStatus emotionalCheckIn.id )
+                    ] []
+                , br [] []
+                -- , span [] [ text ( "Last updated: " ++ getHumanReadableDate ( emotionalCheckIn.lastUpdated ) )]
+                , span [] [ text ( "Last updated: " ++ getHumanReadableDuration emotionalCheckIn.lastUpdated model.now )]
+                , br [] []
+                , br [] []
+                ]
+    in div [] ( List.map viewGetCheckIn model.emotionalCheckIns )
 
 view : Model -> Html UpdatePayload
 view model =
-    let
-        -- TODO: Output entire model instead of a specific string.
-        _ = Debug.log "k" ( .status ( getEmotionalCheckIn "k" model ) )
-        _ = Debug.log "y" ( .status ( getEmotionalCheckIn "y" model ) )
-    in
     main_[]
         -- TODO: Style the view.
         [ h1 [] [ text "Emotional availabilty check-in" ]
-        , label [] [ text "K's emotional availability" ]
-        , br [] []
-        , input
-            [ placeholder "How are you feeling today?"
-            , value ( getEmotionalCheckInStatus "k" model )
-            , onInput ( SetEmotionalCheckInStatus "k" )
-            ] []
-        , br [] []
-        -- TODO: Process the last updated timestamp as a user-friendly string
-        , span [] [ text ( "Last updated: " ++ getUserReadableValueFromPosix ( getEmotionalCheckInLastUpdated "k" model ) )]
-        , br [] []
-        , br [] []
-        , label [] [ text "Y's emotional availability" ]
-        , br [] []
-        , input
-            [ placeholder "How are you feeling today?"
-            , value ( getEmotionalCheckInStatus "y" model )
-            , onInput ( SetEmotionalCheckInStatus "y" )
-            ] []
-        , br [] []
-        , span [] [ text ( "Last updated: " ++ getUserReadableValueFromPosix ( getEmotionalCheckInLastUpdated "y" model ) )]
+        , viewGetCheckIns model
         ]
