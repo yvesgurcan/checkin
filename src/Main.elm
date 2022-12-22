@@ -1,14 +1,15 @@
 
 module Main exposing (..)
 
+import Html
+import Html.Styled exposing (..)
+import Html.Styled.Attributes exposing (..)
+import Html.Styled.Events exposing (..)
 import Browser
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
-import Html.Styled.Attributes exposing (css)
+import Css exposing (..)
+import Css.Colors exposing (..)
 import List exposing (..)
 import Date exposing (..)
-import Css exposing (..)
 import Task exposing (..)
 import Time exposing (Posix, millisToPosix, posixToMillis, now, toYear, toMonth, toDay, utc, Month(..))
 import Duration exposing (..)
@@ -16,7 +17,7 @@ import Duration exposing (..)
 main =
     Browser.element
         { init = init
-        , view = view
+        , view = view >> toUnstyled
         , update = update
         , subscriptions = subscriptions
         }
@@ -144,8 +145,14 @@ viewGetCheckIns model =
 
 view : Model -> Html UpdatePayload
 view model =
-    main_[]
+    main_
         -- TODO: Style the view.
+        [ css
+            [ minHeight (vh 100)
+            , padding (rem 3)
+            , backgroundColor black
+            ]
+        ]
         [ h1 [] [ text "Emotional availabilty check-in" ]
         , viewGetCheckIns model
         ]
