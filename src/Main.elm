@@ -151,6 +151,7 @@ view model =
             [ minHeight (vh 100)
             , padding (rem 3)
             , backgroundColor black
+            , color white
             ]
         ]
         [ h1 [] [ text "Emotional availabilty check-in" ]
