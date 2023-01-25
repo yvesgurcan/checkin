@@ -7,7 +7,6 @@ import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (..)
 import Browser
 import Css exposing (..)
-import Css.Colors exposing (..)
 import List exposing (..)
 import Date exposing (..)
 import Task exposing (..)
@@ -54,7 +53,7 @@ type UpdatePayload
 
 update : UpdatePayload -> Model -> ( Model, Cmd UpdatePayload )
 update payload model =
-    case --Debug.log "update payload"
+    case
         payload of
         NoOp ->
             ( model, Cmd.none )
@@ -63,7 +62,7 @@ update payload model =
             let
                 updateEmotionalCheckIn emotionalCheckIn =
                     if (emotionalCheckIn.id == id) then
-                        { emotionalCheckIn | lastUpdated = model.now , status = status }
+                        { emotionalCheckIn | lastUpdated = model.now, status = status }
                     else
                         emotionalCheckIn
                 updatedEmotionalCheckIns = List.map updateEmotionalCheckIn model.emotionalCheckIns
@@ -75,8 +74,7 @@ update payload model =
 
 
 subscriptions : Model -> Sub UpdatePayload
-subscriptions _ =
-    Sub.none
+subscriptions model = Time.every 1000 UpdateCurrentTime
 
 getHumanReadableDate : Posix -> String
 getHumanReadableDate timestamp =
@@ -106,26 +104,44 @@ getDay day =
     if day > 9 then String.fromInt day
     else "0" ++ String.fromInt day
 
--- TODO: Expand this function so that, when given a unit of "second", it returns "" if duration == 0, "X second" if duration == 1, or else "X seconds".
-getHumanReadableDurationFragment : Float -> String -> String
-getHumanReadableDurationFragment duration unit = ""
+getDuration : Duration.Duration -> String
+getDuration differenceFromNow = 
+    let
+        durationHelpers =
+            if (inJulianYears differenceFromNow >= 1) then ({ converter = inJulianYears, unit = "year"})
+            -- Elm doesn't come with an inMonths function, somehow ¯\_(ツ)_/¯
+            else if (inWeeks differenceFromNow >= 1) then ({ converter = inWeeks, unit = "week"})
+            else if (inDays differenceFromNow >= 1) then ({ converter = inDays, unit = "day"})
+            else if ( ( inHours differenceFromNow ) >= 1) then ({ converter = inHours, unit = "hour"})
+            else if (inMinutes differenceFromNow >= 1) then ({ converter = inMinutes, unit = "minute"})
+            else ({ converter = inSeconds, unit = "second" })
+    in
+        if inSeconds differenceFromNow == 0 then "just now"
+        else
+            getHumanReadableDurationFragment ( Basics.round ( durationHelpers.converter differenceFromNow ) ) durationHelpers.unit ++ " ago."
 
--- TODO: Update model.now every second so that the duration between model.now and date is updated in the view. Otherwise, lastUpdated will always be equal to now.
--- TODO: Process the last updated timestamp as a time-from-now user-friendly string thanks to Duration in elm-units
+getHumanReadableDurationFragment : Int -> String -> String
+getHumanReadableDurationFragment duration unit =
+    case
+        duration of
+        0 -> ""
+        1 -> String.fromInt duration ++ " " ++ unit
+        _ -> String.fromInt duration ++ " " ++ unit ++ "s"
+
 getHumanReadableDuration : Posix -> Posix -> String
 getHumanReadableDuration pastDate now =
     if ( posixToMillis pastDate == 0) then "-"
     else
         let
             differenceFromNow = milliseconds ( toFloat ( posixToMillis now - posixToMillis pastDate ) )
-        in String.fromFloat ( inSeconds differenceFromNow ) ++ " seconds ago."
+        in  getDuration differenceFromNow
 
 viewGetCheckIns : Model -> Html UpdatePayload
 viewGetCheckIns model =
     let
         viewGetCheckIn emotionalCheckIn =
             let
-                _ = Debug.log emotionalCheckIn.id ( "status: " ++ emotionalCheckIn.status ++ ", lastUpdated: " ++ String.fromInt ( posixToMillis emotionalCheckIn.lastUpdated ) )
+                _ = Debug.log emotionalCheckIn.id ( "status: " ++ emotionalCheckIn.status ++ ", lastUpdated: " ++ String.fromInt ( posixToMillis emotionalCheckIn.lastUpdated ) ++ ", now: " ++ String.fromInt ( posixToMillis model.now ) )
             in
             div []
                 [ label [] [ text ( emotionalCheckIn.name ++ "'s emotional availability" ) ]
@@ -136,8 +152,7 @@ viewGetCheckIns model =
                     , onInput ( SetEmotionalCheckInStatus emotionalCheckIn.id )
                     ] []
                 , br [] []
-                -- , span [] [ text ( "Last updated: " ++ getHumanReadableDate ( emotionalCheckIn.lastUpdated ) )]
-                , span [] [ text ( "Last updated: " ++ getHumanReadableDuration emotionalCheckIn.lastUpdated model.now )]
+                , span [] [ text ( "Last updated: " ++ ( getHumanReadableDuration emotionalCheckIn.lastUpdated model.now ) )]
                 , br [] []
                 , br [] []
                 ]
@@ -150,8 +165,8 @@ view model =
         [ css
             [ minHeight (vh 100)
             , padding (rem 3)
-            , backgroundColor black
-            , color white
+            , backgroundColor ( hex "000000" )
+            , color ( hex "ffffff" )
             ]
         ]
         [ h1 [] [ text "Emotional availabilty check-in" ]
