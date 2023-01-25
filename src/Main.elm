@@ -40,7 +40,7 @@ init flags =
     ({ now = millisToPosix 0
        , emotionalCheckIns =
             [ { id = "k", name = "K", status = ":)", lastUpdated = millisToPosix 0 }
-              , { id = "y", name = "Y", status = ":D", lastUpdated = millisToPosix 0 }
+              , { id = "y", name = "Yves", status = ":D", lastUpdated = millisToPosix 0 }
             ]
     }
     , perform UpdateCurrentTime now
@@ -143,32 +143,60 @@ viewGetCheckIns model =
             let
                 _ = Debug.log emotionalCheckIn.id ( "status: " ++ emotionalCheckIn.status ++ ", lastUpdated: " ++ String.fromInt ( posixToMillis emotionalCheckIn.lastUpdated ) ++ ", now: " ++ String.fromInt ( posixToMillis model.now ) )
             in
-            div []
-                [ label [] [ text ( emotionalCheckIn.name ++ "'s emotional availability" ) ]
+            div [ css 
+                    [ minWidth ( rem 15.1 )
+                    , padding ( rem 1 )
+                    ]
+                ]
+                [ label []
+                    [ text ( emotionalCheckIn.name ++ "'s" )
+                    , br [] []
+                    , text ( "emotional availability" )
+                    ]
                 , br [] []
                 , input
-                    [ placeholder "How are you feeling today?"
+                    [ css
+                        [ padding ( rem 0.5 )
+                        , margin4 ( rem 0.75 ) ( rem 0 ) ( rem 0.75) ( rem 0)
+                        ]
+                    , placeholder "How are you feeling today?"
                     , value ( emotionalCheckIn.status )
                     , onInput ( SetEmotionalCheckInStatus emotionalCheckIn.id )
                     ] []
                 , br [] []
                 , span [] [ text ( "Last updated: " ++ ( getHumanReadableDuration emotionalCheckIn.lastUpdated model.now ) )]
-                , br [] []
-                , br [] []
                 ]
-    in div [] ( List.map viewGetCheckIn model.emotionalCheckIns )
+    in div
+        [ css
+            [ displayFlex
+            , flexWrap Css.wrap
+            , justifyContent center
+            ] ]
+        ( List.map viewGetCheckIn model.emotionalCheckIns )
 
 view : Model -> Html UpdatePayload
 view model =
+    -- TODO: Add the Oleo Script font to the application and apply it on main
+    {-|
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Oleo+Script&display=swap" rel="stylesheet">
+    -}
     main_
-        -- TODO: Style the view.
         [ css
-            [ minHeight (vh 100)
-            , padding (rem 3)
+            [ displayFlex
+            , flexDirection column
+            , minHeight ( vh 100 )
+            , alignItems center
+            , justifyContent center
+            , fontSize ( px 20 )
+            , padding ( rem 3 )
             , backgroundColor ( hex "000000" )
             , color ( hex "ffffff" )
             ]
         ]
-        [ h1 [] [ text "Emotional availabilty check-in" ]
+        [ h1 [
+            css [ textAlign center ]
+        ] [ text "Emotional check-in" ]
         , viewGetCheckIns model
         ]
